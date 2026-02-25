@@ -7,13 +7,36 @@ from datetime import datetime
 import requests
 from urllib.parse import quote
 import re
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def get_proxy():
+    """从快代理API获取一个代理IP"""
+    api_url = os.getenv('KDL_API_URL')
+    username = os.getenv('KDL_USERNAME')
+    password = os.getenv('KDL_PASSWORD')
+    if not api_url or not username or not password:
+        return None
+    try:
+        proxy_ip = requests.get(api_url, timeout=10).text.strip()
+        proxies = {
+            "http": f"http://{username}:{password}@{proxy_ip}/",
+            "https": f"http://{username}:{password}@{proxy_ip}/"
+        }
+        return proxies
+    except Exception as e:
+        print(f"获取代理失败: {e}")
+        return None
 
 def get_related_queries(keyword, geo='', timeframe='today 12-m'):
     """
     获取关键词的相关查询数据，带请求限制
     """
     while True:  # 添加无限重试循环
-        tr = Trends(hl='zh-CN')
+        proxies = get_proxy()
+        tr = Trends(hl='zh-CN', proxy=proxies) if proxies else Trends(hl='zh-CN')
         
         # 随机化 User-Agent
         user_agents = [
