@@ -57,6 +57,7 @@ def get_related_queries(keyword, geo='', timeframe='today 12-m'):
             from requests.adapters import HTTPAdapter
             tr.session.mount('http://', HTTPAdapter(pool_connections=0, pool_maxsize=0))
             tr.session.mount('https://', HTTPAdapter(pool_connections=0, pool_maxsize=0))
+            print(f"[代理] {tr.session.proxies}")
         # 清除cookie，避免Google通过cookie追踪
         tr.session.cookies.clear()
         
