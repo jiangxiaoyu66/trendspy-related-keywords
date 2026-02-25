@@ -51,7 +51,12 @@ def get_related_queries(keyword, geo='', timeframe='today 12-m'):
     while True:  # 添加无限重试循环
         proxies = get_proxy()
         tr = Trends(hl='zh-CN', proxy=proxies) if proxies else Trends(hl='zh-CN')
-        print(f"[DEBUG] session proxies: {tr.session.proxies}")
+        # 禁用keep-alive和连接池，确保每次请求建立新连接（隧道代理每个新连接换IP）
+        if proxies:
+            tr.session.headers.update({'Connection': 'close'})
+            from requests.adapters import HTTPAdapter
+            tr.session.mount('http://', HTTPAdapter(pool_connections=0, pool_maxsize=0))
+            tr.session.mount('https://', HTTPAdapter(pool_connections=0, pool_maxsize=0))
         
         # 随机化 User-Agent
         user_agents = [
