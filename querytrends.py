@@ -51,6 +51,7 @@ def get_related_queries(keyword, geo='', timeframe='today 12-m'):
     while True:  # 添加无限重试循环
         proxies = get_proxy()
         tr = Trends(hl='zh-CN', proxy=proxies) if proxies else Trends(hl='zh-CN')
+        print(f"[DEBUG] session proxies: {tr.session.proxies}")
         
         # 随机化 User-Agent
         user_agents = [
