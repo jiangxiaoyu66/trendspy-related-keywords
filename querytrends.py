@@ -44,11 +44,11 @@ def get_proxy():
         print(f"获取代理失败: {e}")
         return None
 
-def get_related_queries(keyword, geo='', timeframe='today 12-m'):
+def get_related_queries(keyword, geo='', timeframe='today 12-m', max_retries=5):
     """
     获取关键词的相关查询数据，带请求限制
     """
-    while True:  # 添加无限重试循环
+    for attempt in range(1, max_retries + 1):
         proxies = get_proxy()
         tr = Trends(hl='zh-CN', proxy=proxies, request_delay=3.0) if proxies else Trends(hl='zh-CN')
         # 禁用keep-alive和连接池，确保每次请求建立新连接（隧道代理每个新连接换IP）
@@ -60,7 +60,7 @@ def get_related_queries(keyword, geo='', timeframe='today 12-m'):
             print(f"[代理] {tr.session.proxies}")
         # 清除cookie，避免Google通过cookie追踪
         tr.session.cookies.clear()
-        
+
         # 随机化 User-Agent
         user_agents = [
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -69,22 +69,22 @@ def get_related_queries(keyword, geo='', timeframe='today 12-m'):
             'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         ]
-        
+
         headers = {
             'referer': 'https://www.google.com/',
             'User-Agent': random.choice(user_agents),
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         }
-        
+
         try:
             # 检查请求限制
             request_limiter.wait_if_needed()
-            
+
             # 添加随机延时
             delay = random.uniform(1, 3)
             time.sleep(delay)
-            
+
             related_data = tr.related_queries(
                 keyword,
                 headers=headers,
@@ -93,27 +93,19 @@ def get_related_queries(keyword, geo='', timeframe='today 12-m'):
             )
             print(f"成功获取数据！")
             return related_data
-            
+
         except Exception as e:
             error_msg = str(e)
-            print(f"尝试获取数据时出错: {error_msg}")
-            
-            # 如果是配额超限错误，等待后重试
-            if "API quota exceeded" in error_msg:
-                wait_time = random.uniform(300, 360)  # 等待5-6分钟
-                print(f"API配额超限，等待 {wait_time:.1f} 秒后重试...")
+            print(f"[{keyword}] 第{attempt}/{max_retries}次尝试失败: {error_msg}")
+
+            if attempt < max_retries:
+                wait_time = random.uniform(5, 15)
+                print(f"换代理重试，等待 {wait_time:.1f} 秒...")
                 time.sleep(wait_time)
-                continue  # 继续下一次重试
-            
-            # 如果是NoneType错误，也等待后重试
-            if "'NoneType' object has no attribute 'raise_for_status'" in error_msg:
-                wait_time = random.uniform(60, 120)  # 等待1-2分钟
-                print(f"请求返回为空，等待 {wait_time:.1f} 秒后重试...")
-                time.sleep(wait_time)
-                continue  # 继续下一次重试
-                
-            # 其他错误则直接抛出
-            raise
+                continue
+            else:
+                print(f"[{keyword}] 已达最大重试次数{max_retries}，跳过")
+                return None
 
 def batch_get_queries(keywords, geo='', timeframe='today 12-m', delay_between_queries=5):
     """
