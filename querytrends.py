@@ -13,7 +13,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_proxy():
-    """从快代理API获取一个代理IP"""
+    """获取代理，优先使用隧道代理，其次动态代理"""
+    # 隧道代理
+    tunnel = os.getenv('KDL_TUNNEL')
+    tunnel_user = os.getenv('KDL_TUNNEL_USERNAME')
+    tunnel_pwd = os.getenv('KDL_TUNNEL_PASSWORD')
+    if tunnel and tunnel_user and tunnel_pwd:
+        proxies = {
+            "http": f"http://{tunnel_user}:{tunnel_pwd}@{tunnel}/",
+            "https": f"http://{tunnel_user}:{tunnel_pwd}@{tunnel}/"
+        }
+        print(f"使用隧道代理: {tunnel}")
+        return proxies
+
+    # 动态代理
     api_url = os.getenv('KDL_API_URL')
     username = os.getenv('KDL_USERNAME')
     password = os.getenv('KDL_PASSWORD')
@@ -25,6 +38,7 @@ def get_proxy():
             "http": f"http://{username}:{password}@{proxy_ip}/",
             "https": f"http://{username}:{password}@{proxy_ip}/"
         }
+        print(f"使用动态代理: {proxy_ip}")
         return proxies
     except Exception as e:
         print(f"获取代理失败: {e}")
